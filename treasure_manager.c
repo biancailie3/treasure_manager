@@ -17,7 +17,7 @@ typedef struct {
     char username[USER_LEN];
     double latitude;
     double longitude;
-    char clue[INDICIU_LENGTH];
+    char hint[INDICIU_LENGTH];
     int value;
 }Treasure_t;
 
@@ -69,7 +69,7 @@ void add_treasure(const char *hunt_id)
     printf("Introdu longitudinea: ");
     scanf("%lf", &new_treasure.longitude);
     printf("Introdu indiciu: ");
-    scanf(" %[^\n]", new_treasure.clue);
+    scanf(" %[^\n]", new_treasure.hint);
     printf("Introdu valoarea: ");
     scanf("%d", &new_treasure.value);
 
@@ -79,7 +79,7 @@ void add_treasure(const char *hunt_id)
              new_treasure.username,
              new_treasure.latitude,
              new_treasure.longitude,
-             new_treasure.clue,
+             new_treasure.hint,
              new_treasure.value);
 
     write(file_fd, buffer, strlen(buffer));
@@ -123,17 +123,13 @@ void view_hunt(const char *hunt_id, int treasure_id)
         char *line = strtok(buffer, "\n");
         while (line != NULL) 
         {
-            int id;
-            char username[USER_LEN];
-            double latitude, longitude;
-            char clue[INDICIU_LENGTH];
-            int value;
+           Treasure_t treasure;
 
-            if (sscanf(line, "%d %s %lf %lf \"%[^\"]\" %d", &id, username, &latitude, &longitude, clue, &value) == 6) 
+            if (sscanf(line, "%d %s %lf %lf \"%[^\"]\" %d", &treasure.treasure_id, treasure.username, &treasure.latitude, &treasure.longitude, treasure.hint, &treasure.value) == 6) 
             {
-                if (id == treasure_id) {
+                if (treasure.treasure_id== treasure_id) {
                     printf("ID: %d\nUsername: %s\nLatitude: %.6lf\nLongitude: %.6lf\nClue: %s\nValue: %d\n",
-                           id, username, latitude, longitude, clue, value);
+                           treasure.treasure_id, treasure.username, treasure.latitude, treasure.longitude, treasure.hint, treasure.value);
                     found = 1;
                     break;
                 }
@@ -171,7 +167,7 @@ void list_treasures(const char *hunt_id)
     }
 
     printf("Treasure hunt: %s\n", hunt_id);
-    printf("Dimensiune fisier: %ld bytes\n", file_info.st_size);
+    printf("Dimensiune fisier: %lld bytes\n", file_info.st_size);
     printf("Ultima modificare: %s", ctime(&file_info.st_mtime));
 
     int file_fd = open(file_path, O_RDONLY);
@@ -195,6 +191,78 @@ void list_treasures(const char *hunt_id)
     }
 
     close(file_fd);
+}
+
+void remove_treasure(const char *hunt_id, int treasure_id) 
+{
+    char file_path[256];
+    snprintf(file_path, sizeof(file_path), "%s/treasures.txt", hunt_id);
+
+    int fd = open(file_path, O_RDONLY);
+    if (fd == -1) {
+        perror("Eroare deschidere fisier\n");
+        return;
+    }
+
+    int count = 0;
+    char buffer[512];
+    ssize_t bytes_read;
+    char line[512];
+    int line_pos = 0;
+
+    while ((bytes_read = read(fd, buffer, sizeof(buffer))) > 0) {
+        for (ssize_t i = 0; i < bytes_read; i++) {
+            if (buffer[i]=='\n')
+            {
+                line[line_pos]='\0';
+                if (line_pos>0) 
+                {
+                    count++;
+                }
+                line_pos=0;
+            } 
+            else 
+            {
+                if (line_pos< sizeof(line)-1) 
+                {
+                    line[line_pos++]= buffer[i];
+                }
+            }
+        }
+    }
+
+    // daca mai ramane o linie fara newline la final
+    if (line_pos > 0) 
+    {
+        count++;
+    }
+    close(fd);
+
+    if (count == 1) 
+    {
+        if (unlink(file_path) == -1) 
+        {
+            perror("Eroare la stergerea fisierului\n");
+            return;
+        }
+        printf("Ultima comoara a fost stearsa. Fisierul cu comori a fost eliminat\n");
+    } 
+    else 
+    {
+        // filtram cu grep comorile
+        char command[512];
+        snprintf(command, sizeof(command),
+                 "grep -v '^%d ' %s > %s.tmp && mv %s.tmp %s",
+                 treasure_id, file_path, file_path, file_path, file_path);
+
+        if (system(command) == -1) 
+        {
+            perror("Eroare la stergerea comorii\n");
+            return;
+        }
+
+        printf("Comoara cu ID-ul %d a fost stearsa\n", treasure_id);
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -239,6 +307,19 @@ int main(int argc, char *argv[]) {
             return 1;
         }
         view_hunt(argv[2], treasure_id);
+    }
+    else if (strcmp(argv[1], "--remove") == 0) 
+    {
+        if (argc < 4) {
+            printf("eroare argumente\n");
+            return 1;
+        }
+        int treasure_id = atoi(argv[3]); //convertim in numar
+        if (treasure_id <= 0) {
+            printf("ID-ul comorii trebuie sa fie un numar pozitiv\n");
+            return 1;
+        }
+        remove_treasure(argv[2], treasure_id);
     }
     else 
     {
