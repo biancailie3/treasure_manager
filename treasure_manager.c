@@ -7,9 +7,6 @@
 #include <time.h>
 #include <errno.h>
 
-int main() {
-    printf("Hello, World!\n");
-    return 0;
 #define USER_LEN 32
 #define INDICIU_LENGTH 128
 #define LOG_FILE "logged_hunt"
