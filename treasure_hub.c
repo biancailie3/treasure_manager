@@ -28,9 +28,21 @@ pid_t monitor_pid = -1;
 
 
 // Handler pentru SIGCHLD - detecteaza terminarea procesului monitor
-void sigchld_handler(int sig) {
+void sigchld_handler(int sig) 
+{
     int status;
     pid_t pid = waitpid(-1, &status, WNOHANG);
+//verificam daca copilul e procesul care se termina si e monitorul
+    if (pid == -1) 
+    {
+        perror("Eroare la waitpid\n");
+        return;
+    }
+    else if (pid == 0) 
+    {
+        // nuu s-a terminat niciun proces copil
+        return;
+    }
     if (pid == monitor_pid) 
     {
         printf("Monitorul s-a terminat cu starea: %d\n", WEXITSTATUS(status));
@@ -47,7 +59,7 @@ void view_treasure(const char *hunt_id, int treasure_id)
     int fd = open(file_path, O_RDONLY);
     if (fd == -1) 
     {
-        perror("Eroare la deschiderea fisierului de comori");
+        perror("Eroare la deschiderea fisierului de comori\n");
         return;
     }
 
@@ -113,11 +125,11 @@ void list_treasures(const char *hunt_id)
 void list_hunts() {
     DIR *dir = opendir(".");
     if (dir == NULL) {
-        perror("Eroare la deschiderea directorului curent");
+        perror("Eroare la deschiderea directorului curent\n");
         return;
     }
 
-    printf("Lista hunts disponibile:\n");
+    printf("Lista hunt-uri disponibile:\n");
     printf("-------------------------\n");
 
     struct dirent *entry;
@@ -126,8 +138,10 @@ void list_hunts() {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) 
         {
             struct stat st;
+            // verificam daca e director
             if (stat(entry->d_name, &st) == 0 && S_ISDIR(st.st_mode)) 
             {
+                // verificam daca are fisierul de comori
                 char treasure_file[BUF_LEN];
                 snprintf(treasure_file, BUF_LEN, "%s/treasures.bin", entry->d_name);
                 
@@ -135,6 +149,7 @@ void list_hunts() {
                 int fd = open(treasure_file, O_RDONLY);
                 if (fd != -1) 
                 {
+                    // obtinem dimensiunea fisierului si numaram cate comori sunt
                     struct stat file_stat;
                     fstat(fd, &file_stat);
                     int count = file_stat.st_size / sizeof(Treasure_t);
@@ -143,6 +158,7 @@ void list_hunts() {
                 }
                  else 
                 {
+                    // daca nu exista fisierul de comori, afisam 0
                     printf("- %s (0 comori)\n", entry->d_name);
                 }
             }
@@ -154,6 +170,7 @@ void list_hunts() {
 // Handler pentru SIGUSR1 - proceseaza comenzile trimise monitorului
 void monitor_signal_handler(int sig) 
 {
+    // citim comanda din fisier
     char buffer[BUF_LEN] = {0};
     int fd = open(CMD_FILE, O_RDONLY);
     if (fd >= 0) 
@@ -161,15 +178,16 @@ void monitor_signal_handler(int sig)
         read(fd, buffer, BUF_LEN - 1);
         close(fd);
     }
-
+    // verificam daca am citit ceva
     char cmd_copy[BUF_LEN];
     strncpy(cmd_copy, buffer, BUF_LEN);
-
+    //spargem comanda in cuvinte
     char *cmd = strtok(buffer, " \n");
     char *arg1 = strtok(NULL, " \n");
     char *arg2 = strtok(NULL, " \n");
 
     if (cmd == NULL) return;
+    // verificam ce comanda a fost primita
 
     if (strcmp(cmd, "list_hunts") == 0) 
     {
@@ -208,7 +226,6 @@ void write_command_to_file(const char *cmd) {
         perror("Eroare la scrierea in fisierul de comenzi\n");
     }
 }
-
 // functie pentru a rula monitorul
 void run_monitor() 
 {
@@ -235,7 +252,8 @@ int main()
     sa_chld.sa_handler = sigchld_handler;
     sigaction(SIGCHLD, &sa_chld, NULL);
 
-    while (1) {
+    while (1) 
+    {
         printf("hub> ");
         fflush(stdout);
         int len = read(0, input, BUF_LEN - 1);
@@ -298,8 +316,11 @@ int main()
             }
             write_command_to_file(input);
             kill(monitor_pid, SIGUSR1);
-        } else if (strcmp(input, "stop_monitor") == 0) {
-            if (monitor_pid <= 0) {
+        } 
+        else if (strcmp(input, "stop_monitor") == 0) 
+        {
+            if (monitor_pid <= 0) 
+            {
                 printf("Monitorul nu este pornit\n");
                 continue;
             }
@@ -315,7 +336,8 @@ int main()
                 continue;
             }
             break;
-        } else {
+        } else 
+        {
             printf("Comanda necunoscuta\n");
         }
     }
