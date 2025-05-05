@@ -142,7 +142,9 @@ void view_hunt(const char *hunt_id, int treasure_id) {
     log_action(hunt_id, "Treasure hunt vizualizat\n");
 }
 
-void remove_treasure(const char *hunt_id, int treasure_id) {
+
+void remove_treasure(const char *hunt_id, int treasure_id) 
+{
     char file_path[256];
     snprintf(file_path, sizeof(file_path), "%s/treasures.bin", hunt_id);
 
@@ -156,7 +158,7 @@ void remove_treasure(const char *hunt_id, int treasure_id) {
     int count = 0;
     Treasure_t temp;
 
-//citim toate comorile si le salvam in memorie
+    //citim toate comorile si le salvam in memorie
     while (read(fd, &temp, sizeof(Treasure_t)) == sizeof(Treasure_t)) {
         if (temp.treasure_id != treasure_id) {
             treasures = realloc(treasures, sizeof(Treasure_t) * (count + 1));
@@ -165,7 +167,7 @@ void remove_treasure(const char *hunt_id, int treasure_id) {
     }
     close(fd);
 
-    // daca mai e o singura comoara, stergem direct tot fisierul
+    // daca nu mai e nicio comoara, stergem direct tot fisierul
     if (count == 0) {
         if (unlink(file_path) == -1) {
             perror("Eroare la stergerea fisierului de comori\n");
@@ -183,7 +185,23 @@ void remove_treasure(const char *hunt_id, int treasure_id) {
         free(treasures);
         return;
     }
+    
+    // Scriem datele ramase inapoi in fisier
+    for (int i = 0; i < count; i++) {
+        if (write(fd, &treasures[i], sizeof(Treasure_t)) != sizeof(Treasure_t)) {
+            perror("Eroare la scrierea în fișier");
+            break;
+        }
+    }
+    
+    close(fd);
+    free(treasures);
+    
+    char action[100];
+    snprintf(action, sizeof(action), "Comoara cu ID-ul %d a fost ștearsă", treasure_id);
+    log_action(hunt_id, action);
 }
+
 void remove_hunt(const char *hunt_id) 
 {
     char command[256];
