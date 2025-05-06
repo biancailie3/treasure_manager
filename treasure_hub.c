@@ -6,14 +6,13 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <time.h>
 #include <errno.h>
 #include <dirent.h>
 
 #define USER_LEN 32
 #define INDICIU_LENGTH 128
 #define CMD_FILE "cmd.txt"
-#define BUF_LEN 256
+#define buffer_length 256
 
 typedef struct {
     int treasure_id;
@@ -22,7 +21,7 @@ typedef struct {
     double longitude;
     char hint[INDICIU_LENGTH];
     int value;
-} Treasure_t;
+}Treasure_t;
 
 pid_t monitor_pid = -1;
 
@@ -45,7 +44,7 @@ void sigchld_handler(int sig)
     }
     if (pid == monitor_pid) 
     {
-        printf("Monitorul s-a terminat cu starea: %d\n", WEXITSTATUS(status));
+        printf("Monitorul s-a terminat:\n");
         monitor_pid = -1;
     }
 }
@@ -100,8 +99,6 @@ void list_treasures(const char *hunt_id)
     }
 
     printf("Treasure hunt: %s\n", hunt_id);
-    printf("Dimensiune fisier: %lld bytes\n", (long long)file_info.st_size);
-    printf("Ultima modificare: %s", ctime(&file_info.st_mtime));
     printf("\nLista comori:\n");
     printf("---------------------------------------------------------------\n");
 
@@ -142,8 +139,8 @@ void list_hunts() {
             if (stat(entry->d_name, &st) == 0 && S_ISDIR(st.st_mode)) 
             {
                 // verificam daca are fisierul de comori
-                char treasure_file[BUF_LEN];
-                snprintf(treasure_file, BUF_LEN, "%s/treasures.bin", entry->d_name);
+                char treasure_file[buffer_length];
+                snprintf(treasure_file, buffer_length, "%s/treasures.bin", entry->d_name);
                 
                 // numara comorile din fisier
                 int fd = open(treasure_file, O_RDONLY);
@@ -171,16 +168,16 @@ void list_hunts() {
 void monitor_signal_handler(int sig) 
 {
     // citim comanda din fisier
-    char buffer[BUF_LEN] = {0};
+    char buffer[buffer_length] = {0};
     int fd = open(CMD_FILE, O_RDONLY);
     if (fd >= 0) 
     {
-        read(fd, buffer, BUF_LEN - 1);
+        read(fd, buffer, buffer_length-1);
         close(fd);
     }
     // verificam daca am citit ceva
-    char cmd_copy[BUF_LEN];
-    strncpy(cmd_copy, buffer, BUF_LEN);
+    char cmd_copy[buffer_length];
+    strncpy(cmd_copy, buffer, buffer_length);
     //spargem comanda in cuvinte
     char *cmd = strtok(buffer, " \n");
     char *arg1 = strtok(NULL, " \n");
@@ -188,7 +185,6 @@ void monitor_signal_handler(int sig)
 
     if (cmd == NULL) return;
     // verificam ce comanda a fost primita
-
     if (strcmp(cmd, "list_hunts") == 0) 
     {
         list_hunts();
@@ -234,8 +230,7 @@ void run_monitor()
     sa.sa_handler = monitor_signal_handler;
     sigaction(SIGUSR1, &sa, NULL);
 
-    printf("Monitorul a pornit cu PID: %d\n", getpid());
-    
+    printf("Monitorul a pornit.\n");
     while (1) 
     {
         pause();  // asteapta comenzi
@@ -244,7 +239,7 @@ void run_monitor()
 
 int main() 
 {
-    char input[BUF_LEN];
+    char input[buffer_length];
 
     // Configurarea handler-ului pentru SIGCHLD
     struct sigaction sa_chld;
@@ -256,7 +251,7 @@ int main()
     {
         printf("hub> ");
         fflush(stdout);
-        int len = read(0, input, BUF_LEN - 1);
+        int len = read(0, input, buffer_length - 1);
         if (len <= 0) continue;
         input[len - 1] = '\0';  // eliminam \n
 
@@ -336,7 +331,8 @@ int main()
                 continue;
             }
             break;
-        } else 
+        } 
+        else 
         {
             printf("Comanda necunoscuta\n");
         }
