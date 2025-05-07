@@ -190,6 +190,12 @@ int main()
     sigaction(SIGUSR1, &sa, NULL);
 
     printf("\nMonitorul a pornit.\n");
+    printf("\n----- Comenzi disponibile -----\n");
+    printf("1) list_hunts\n");
+    printf("2) list_treasures <hunt_id>\n");
+    printf("3) view_treasure <hunt_id> <treasure_id>\n");
+    printf("4) stop_monitor\n");
+    printf("------------------------------------\n");
 
     while (1) 
     {
