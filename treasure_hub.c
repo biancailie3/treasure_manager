@@ -17,7 +17,7 @@ void sigchld_handler(int sig)
     int status;
     pid_t pid = waitpid(-1, &status, WNOHANG);
     if (pid == monitor_pid) {
-        printf("Monitorul s-a terminat.\n");
+        printf("Monitorul s-a oprit.\n");
         monitor_pid = -1;
     }
 }
