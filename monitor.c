@@ -182,8 +182,7 @@ void monitor_semnal(int semnal)
     }
 }
 
-int main() 
-{
+int main() {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = monitor_semnal;
