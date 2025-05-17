@@ -22,6 +22,16 @@ typedef struct {
     int value;
 } Treasure_t;
 
+// File descriptor pentru pipe-ul spre procesul principal
+int output_pipe_fd = -1;
+
+// Funcție pentru a scrie în pipe în loc să afișăm direct
+void write_to_pipe(const char *message) {
+    if (output_pipe_fd != -1) {
+        write(output_pipe_fd, message, strlen(message));
+    }
+}
+
 //functie pentru a afisa o comoara
 void view_treasure(const char *hunt_id, int treasure_id) 
 {
@@ -31,19 +41,24 @@ void view_treasure(const char *hunt_id, int treasure_id)
     int fd = open(file_path, O_RDONLY);
     if (fd == -1) 
     {
-        perror("Eroare la deschiderea fisierului de comori\n");
+        char error_msg[buffer_length];
+        snprintf(error_msg, buffer_length, "Eroare la deschiderea fisierului de comori\n");
+        write_to_pipe(error_msg);
         return;
     }
 
     Treasure_t treasure;
     int gasit = 0;
+    char result[1024] = {0};
 
     while (read(fd, &treasure, sizeof(Treasure_t)) == sizeof(Treasure_t)) {
         if (treasure.treasure_id == treasure_id) {
-            printf("ID: %d\nUsername: %s\nLat: %.6lf\nLongit: %.6lf\nHint: %s\nValoare: %d\n",
+            char temp[512];
+            snprintf(temp, sizeof(temp), "ID: %d\nUsername: %s\nLat: %.6lf\nLongit: %.6lf\nHint: %s\nValoare: %d\n",
                    treasure.treasure_id, treasure.username, treasure.latitude,
                    treasure.longitude, treasure.hint, treasure.value);
-            gasit=1;
+            strcat(result, temp);
+            gasit = 1;
             break;
         }
     }
@@ -52,10 +67,15 @@ void view_treasure(const char *hunt_id, int treasure_id)
     // Verificam daca am gasit comoara
     if (!gasit) 
     {
-        printf("Comoara cu ID-ul %d nu a fost gasita\n", treasure_id);
+        char not_found[buffer_length];
+        snprintf(not_found, buffer_length, "Comoara cu ID-ul %d nu a fost gasita\n", treasure_id);
+        write_to_pipe(not_found);
+    } else {
+        write_to_pipe(result);
     }
 }
-//functie pentru afisarea comorilor dintr -un hunt
+
+//functie pentru afisarea comorilor dintr-un hunt
 void list_treasures(const char *hunt_id) 
 {
     char file_path[256];
@@ -64,23 +84,32 @@ void list_treasures(const char *hunt_id)
     int fd = open(file_path, O_RDONLY);
     if (fd == -1) 
     {
-        perror("Eroare la deschidere fisier de comori");
+        char error_msg[buffer_length];
+        snprintf(error_msg, buffer_length, "Eroare la deschidere fisier de comori\n");
+        write_to_pipe(error_msg);
         return;
     }
 
-    printf("Treasure hunt: %s\n\nLista comori:\n", hunt_id);
-    printf("---------------------------------------------------------------\n");
+    char result[4096] = {0};
+    char temp[512];
+    
+    snprintf(temp, sizeof(temp), "Treasure hunt: %s\n\nLista comori:\n", hunt_id);
+    strcat(result, temp);
+    strcat(result, "---------------------------------------------------------------\n");
 
     Treasure_t treasure;
     while (read(fd, &treasure, sizeof(Treasure_t)) == sizeof(Treasure_t)) 
     {
-        printf("ID: %d | Username: %s | Lat: %.6lf | Long: %.6lf | Hint: %s | Value: %d\n",
+        snprintf(temp, sizeof(temp), "ID: %d | Username: %s | Lat: %.6lf | Long: %.6lf | Hint: %s | Value: %d\n",
                treasure.treasure_id, treasure.username, treasure.latitude,
                treasure.longitude, treasure.hint, treasure.value);
+        strcat(result, temp);
     }
 
     close(fd);
+    write_to_pipe(result);
 }
+
 //functie pentru afisarea hunt-urilor si numarului de comori din fiecare hunt
 void list_hunts() 
 {
@@ -88,12 +117,15 @@ void list_hunts()
     DIR *dir = opendir(".");
     if (dir == NULL) 
     {
-        perror("Eroare la deschiderea directorului curent\n");
+        char error_msg[buffer_length];
+        snprintf(error_msg, buffer_length, "Eroare la deschiderea directorului curent\n");
+        write_to_pipe(error_msg);
         return;
     }
 
-    printf("Lista hunt-uri disponibile:\n");
-    printf("--------------------------------\n");
+    char result[4096] = {0};
+    strcat(result, "Lista hunt-uri disponibile:\n");
+    strcat(result, "--------------------------------\n");
 
     int gasit = 0; //cu variabila gasit verificam daca am gasit minim un hunt 
     struct dirent *entry;
@@ -114,12 +146,16 @@ void list_hunts()
                     struct stat file_stat;
                     fstat(fd, &file_stat);
                     int count = file_stat.st_size/sizeof(Treasure_t);
-                    printf("- %s (%d comori)\n", entry->d_name, count);
+                    char temp[256];
+                    snprintf(temp, sizeof(temp), "- %s (%d comori)\n", entry->d_name, count);
+                    strcat(result, temp);
                     close(fd);
                 } 
                 else 
                 {
-                    printf("- %s (0 comori)\n", entry->d_name);
+                    char temp[256];
+                    snprintf(temp, sizeof(temp), "- %s (0 comori)\n", entry->d_name);
+                    strcat(result, temp);
                 }
                 gasit = 1; // am gasit minim un hunt
             }
@@ -130,16 +166,21 @@ void list_hunts()
     //daca nu sunt hunt-uri, afisam mesaj
     if (!gasit) 
     {
-        printf("Nu exista hunt-uri disponibile\nIntrodu alta comanda:\n");
+        strcat(result, "Nu exista hunt-uri disponibile\nIntrodu alta comanda:\n");
     }
+    
+    write_to_pipe(result);
 }
+
 void monitor_semnal(int semnal) 
 {
     char buffer[buffer_length] = {0};
     int fd = open(CMD_FILE, O_RDONLY);
     if (fd == -1) 
     {
-        perror("Eroare la deschiderea fisierului de comenzi\n");
+        char error_msg[buffer_length];
+        snprintf(error_msg, buffer_length, "Eroare la deschiderea fisierului de comenzi\n");
+        write_to_pipe(error_msg);
         return;
     }
     // citim comanda din fisier
@@ -151,7 +192,7 @@ void monitor_semnal(int semnal)
 
     char cmd_copy[buffer_length];
     strncpy(cmd_copy, buffer, buffer_length);
-//spargem comanda in cuvinte
+    //spargem comanda in cuvinte
     char *cmd = strtok(buffer, " \n");
     char *arg1 = strtok(NULL, " \n");
     char *arg2 = strtok(NULL, " \n");
@@ -172,29 +213,44 @@ void monitor_semnal(int semnal)
     } 
     else if (strcmp(cmd, "stop") == 0) 
     {
-        printf("Monitorul se opreste...\n");
-        usleep(3000000);
+        write_to_pipe("Monitorul se opreste...\n");
+        usleep(1000000);
         exit(0);
     } 
     else 
     {
-        printf("Comanda necunoscuta: %s\n", cmd_copy);
+        char unknown_cmd[buffer_length];
+        snprintf(unknown_cmd, buffer_length, "Comanda necunoscuta: %s\n", cmd_copy);
+        write_to_pipe(unknown_cmd);
     }
 }
 
-int main() {
+int main(int argc, char *argv[]) 
+{
+    // verificam daca s-a primit file descriptor pentru pipe
+    // si il convertim in int
+    if (argc > 1) 
+    {
+        output_pipe_fd = atoi(argv[1]);
+    } else 
+    {
+        fprintf(stderr, "Eroare: Nu s-a primit file descriptor pentru pipe\n");
+        return 1;
+    }
+
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = monitor_semnal;
     sigaction(SIGUSR1, &sa, NULL);
 
-    printf("\nMonitorul a pornit.\n");
-    printf("\n----- Comenzi disponibile -----\n");
-    printf("1) list_hunts\n");
-    printf("2) list_treasures <hunt_id>\n");
-    printf("3) view_treasure <hunt_id> <treasure_id>\n");
-    printf("4) stop_monitor\n");
-    printf("------------------------------------\n");
+    write_to_pipe("\n----- Comenzi disponibile -----\n");
+    write_to_pipe("1) list_hunts\n");
+    write_to_pipe("2) list_treasures <hunt_id>\n");
+    write_to_pipe("3) view_treasure <hunt_id> <treasure_id>\n");
+    write_to_pipe("4) calculate_score\n");    
+    write_to_pipe("5) stop_monitor\n");
+    write_to_pipe("------------------------------------\n");
+
 
     while (1) 
     {
