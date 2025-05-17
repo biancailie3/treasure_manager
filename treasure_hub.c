@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <dirent.h>
+#include <sys/stat.h>
 
 #define CMD_FILE "cmd.txt"
 #define buffer_length 256
@@ -56,11 +57,11 @@ void calculate_score_for_hunt(const char *hunt_id)
         perror("Eroare la crearea pipe-ului pentru scoruri");
         return;
     }
-    //cream un proces copil pentru a calcula scorul
+
     pid_t pid = fork();
     if (pid == -1) 
     {
-        perror("Eroare la fork pentru calculare scor");
+        perror("Eroare la fork pentru calculare scor\n");
         close(score_pipe[0]);
         close(score_pipe[1]);
         return;
@@ -68,70 +69,83 @@ void calculate_score_for_hunt(const char *hunt_id)
 
     if (pid == 0) 
     {
-        close(score_pipe[0]); // inchidem capatul de citire la copil
-        
-        // redirectionam iesirea standard catre pipe
-        dup2(score_pipe[1], STDOUT_FILENO);
+        // Proces copil
+        close(score_pipe[0]); // inchidem capatul de citire
+        dup2(score_pipe[1], STDOUT_FILENO);// redirectionam stdout catre pipe
         close(score_pipe[1]);
-        
-        // executăm programul calculate_score
+
+        // Executam programul calculate_score cu hunt_id ca argument
         execl("./calculate_score", "calculate_score", hunt_id, NULL);
-        perror("Eroare la execl pentru calculate_score");
+
+        perror("Eroare la execl pentru calculate_score\n");
         exit(1);
     }
     else 
-    { 
-        close(score_pipe[1]); // inchidem capatul de scriere la parinte
-        
-        // Citim rezultatele din pipe
-        memset(pipe_buffer, 0, sizeof(pipe_buffer));
-        int bytes_read = read(score_pipe[0], pipe_buffer, sizeof(pipe_buffer)-1);
-        if (bytes_read > 0) {
-            pipe_buffer[bytes_read] = '\0';
-            printf("Rezultate pentru %s:\n%s\n", hunt_id, pipe_buffer);
+    {
+        // Proces parinte: citim din pipe
+        close(score_pipe[1]); // inchidem capatul de scriere
+
+        char buffer[4096];
+        ssize_t bytes_read;
+
+        printf("Rezultate pentru %s:\n", hunt_id);
+        while ((bytes_read = read(score_pipe[0], buffer, sizeof(buffer) - 1)) > 0) 
+        {
+            buffer[bytes_read] = '\0'; // terminator string
+            printf("%s", buffer);
         }
-        
+        printf("\n");
+
         close(score_pipe[0]);
-        waitpid(pid, NULL, 0); // asteptam terminarea procesului copil
+        waitpid(pid, NULL, 0); // asteptam terminarea copilului
     }
 }
 
 // functie pentru a calcula scorurile pentru toate hunt-urile
-void calculate_all_scores() {
+void calculate_all_scores() 
+{
     DIR *dir = opendir(".");
-    if (dir == NULL) {
-        perror("Eroare la deschiderea directorului curent");
+    if (!dir) {
+        perror("Eroare la deschiderea directorului curent\n");
         return;
     }
 
     struct dirent *entry;
     int found = 0;
-    
+
     printf("Calcularea scorurilor pentru toate hunt-urile...\n");
-    
+
     while ((entry = readdir(dir)) != NULL) 
     {
+        // Sarim peste "." si ".."
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) 
-        {
             continue;
-        }
-        
-        // verificăm dacă este un director
-        char treasure_path[256];
-        snprintf(treasure_path, sizeof(treasure_path), "%s/treasures.bin", entry->d_name);
-        
-        int fd = open(treasure_path, O_RDONLY);
-        if (fd != -1) {
-            close(fd);
-            found = 1;
-            printf("\n--- Hunt: %s ---\n", entry->d_name);
-            calculate_score_for_hunt(entry->d_name);
+
+        // Verificam daca e director
+        struct stat st;
+        if (stat(entry->d_name, &st) == 0 && S_ISDIR(st.st_mode)) 
+        {
+            // Construim calea catre fisierul de comoara
+            char treasure_path[256];
+            snprintf(treasure_path, sizeof(treasure_path), "%s/treasures.bin", entry->d_name);
+
+            // Verificam daca fisierul exista
+            int fd = open(treasure_path, O_RDONLY);
+            if (fd != -1) 
+            {
+                close(fd);
+                found = 1;
+
+                // Pentru a fi consistent, trimitem doar numele hunt-ului (directorul) catre calculate_score
+                calculate_score_for_hunt(entry->d_name);
+            }
         }
     }
-    
+
     closedir(dir);
-    
-    if (!found) {
+
+    if (!found) 
+    {
         printf("Nu există hunt-uri disponibile pentru calcularea scorurilor.\n");
     }
 }
