@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra
+CFLAGS = -Wall
 
 # Main targets
 all: monitor treasure_hub calculate_score
