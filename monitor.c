@@ -67,10 +67,11 @@ void view_treasure(const char *hunt_id, int treasure_id)
     // Verificam daca am gasit comoara
     if (!gasit) 
     {
-        char not_found[buffer_length];
-        snprintf(not_found, buffer_length, "Comoara cu ID-ul %d nu a fost gasita\n", treasure_id);
-        write_to_pipe(not_found);
-    } else {
+        char error[buffer_length];
+        snprintf(error, buffer_length, "Comoara cu ID-ul %d nu a fost gasita\n", treasure_id);
+        write_to_pipe(error);
+    } else 
+    {
         write_to_pipe(result);
     }
 }
@@ -232,7 +233,8 @@ int main(int argc, char *argv[])
     if (argc > 1) 
     {
         output_pipe_fd = atoi(argv[1]);
-    } else 
+    } 
+    else 
     {
         fprintf(stderr, "Eroare: Nu s-a primit file descriptor pentru pipe\n");
         return 1;
