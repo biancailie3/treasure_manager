@@ -49,7 +49,7 @@ void view_treasure(const char *hunt_id, int treasure_id)
 
     Treasure_t treasure;
     int gasit = 0;
-    char result[1024] = {0};
+    char result[1024]={0};
 
     while (read(fd, &treasure, sizeof(Treasure_t)) == sizeof(Treasure_t)) {
         if (treasure.treasure_id == treasure_id) {
