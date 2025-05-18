@@ -97,7 +97,7 @@ void calculate_score_for_hunt(const char *hunt_id)
         printf("\n");
 
         close(score_pipe[0]);
-        waitpid(pid, NULL, 0); // asteptam terminarea copilului
+        waitpid(pid, NULL, 0); // asteptam incheierea copilului
     }
 }
 
