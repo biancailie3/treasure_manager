@@ -11,8 +11,6 @@
 #define CMD_FILE "cmd.txt"
 #define buffer_length 256
 
-
-
 //monitor pid este -1 pentru a verifica daca monitorul este pornit sau nu
 pid_t monitor_pid = -1;
 int pipe_fd[2]; // Pipe pentru comunicare între monitor si hub
@@ -201,11 +199,12 @@ int main()
                 // Proces copil - monitorul
                 close(pipe_fd[0]); // inchidem capatul de citire in monitor
                 
-               //convertim  in string
-                char fd_str[20];
-                snprintf(fd_str, sizeof(fd_str), "%d", pipe_fd[1]);
+                // Redirectam stdout al procesului monitor spre pipe
+                dup2(pipe_fd[1], STDOUT_FILENO);
+                close(pipe_fd[1]);
                 
-                execl("./monitor", "monitor", fd_str, NULL);
+                //executam monitorul
+                execl("./monitor", "monitor", NULL);
                 perror("Eroare la execl");
                 exit(1);
             }
@@ -215,7 +214,7 @@ int main()
                 close(pipe_fd[1]); //inchidem capatul de scriere in hub
                 monitor_pid = pid;
                 printf("Monitor pornit.\n");
-                sleep(1); 
+                usleep(1000000); // asteptam putin pentru a ne asigura ca monitorul este pornit
                 read_from_monitor_pipe();
             }
             else 
