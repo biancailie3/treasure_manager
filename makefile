@@ -24,5 +24,3 @@ clean:
 # Phony targets
 .PHONY: all clean
 
-//treasure_manager se ruleaza cu ./treasure_manager
-//treasure_hub se ruleaza cu ./treasure_hub
