@@ -1,0 +1,3 @@
+se compileaza toate programele  cu comanda " make " 
+treasure_manager.c se ruleaza cu ./treasure_manager
+treasure_hub se ruleaza cu ./treasure_hub
