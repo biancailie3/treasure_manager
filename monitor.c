@@ -22,15 +22,6 @@ typedef struct {
     int value;
 } Treasure_t;
 
-// File descriptor pentru pipe-ul spre procesul principal
-int output_pipe_fd = -1;
-
-// Funcție pentru a scrie în pipe în loc să afișăm direct
-void write_to_pipe(const char *message) {
-    if (output_pipe_fd != -1) {
-        write(output_pipe_fd, message, strlen(message));
-    }
-}
 
 //functie pentru a afisa o comoara
 void view_treasure(const char *hunt_id, int treasure_id) 
@@ -41,9 +32,7 @@ void view_treasure(const char *hunt_id, int treasure_id)
     int fd = open(file_path, O_RDONLY);
     if (fd == -1) 
     {
-        char error_msg[buffer_length];
-        snprintf(error_msg, buffer_length, "Eroare la deschiderea fisierului de comori\n");
-        write_to_pipe(error_msg);
+        printf("Eroare la deschiderea fisierului de comori\n");
         return;
     }
 
@@ -67,12 +56,10 @@ void view_treasure(const char *hunt_id, int treasure_id)
     // Verificam daca am gasit comoara
     if (!gasit) 
     {
-        char error[buffer_length];
-        snprintf(error, buffer_length, "Comoara cu ID-ul %d nu a fost gasita\n", treasure_id);
-        write_to_pipe(error);
+        printf("Comoara cu ID-ul %d nu a fost gasita\n", treasure_id);
     } else 
     {
-        write_to_pipe(result);
+        printf("%s", result);
     }
 }
 
@@ -85,9 +72,7 @@ void list_treasures(const char *hunt_id)
     int fd = open(file_path, O_RDONLY);
     if (fd == -1) 
     {
-        char error_msg[buffer_length];
-        snprintf(error_msg, buffer_length, "Eroare la deschidere fisier de comori\n");
-        write_to_pipe(error_msg);
+        printf("Eroare la deschidere fisier de comori\n");
         return;
     }
 
@@ -108,7 +93,7 @@ void list_treasures(const char *hunt_id)
     }
 
     close(fd);
-    write_to_pipe(result);
+    printf("%s", result);
 }
 
 //functie pentru afisarea hunt-urilor si numarului de comori din fiecare hunt
@@ -118,9 +103,7 @@ void list_hunts()
     DIR *dir = opendir(".");
     if (dir == NULL) 
     {
-        char error_msg[buffer_length];
-        snprintf(error_msg, buffer_length, "Eroare la deschiderea directorului curent\n");
-        write_to_pipe(error_msg);
+        printf("Eroare la deschiderea directorului curent\n");
         return;
     }
 
@@ -170,7 +153,7 @@ void list_hunts()
         strcat(result, "Nu exista hunt-uri disponibile\nIntrodu alta comanda:\n");
     }
     
-    write_to_pipe(result);
+    printf("%s", result);
 }
 
 void monitor_semnal(int semnal) 
@@ -179,9 +162,7 @@ void monitor_semnal(int semnal)
     int fd = open(CMD_FILE, O_RDONLY);
     if (fd == -1) 
     {
-        char error_msg[buffer_length];
-        snprintf(error_msg, buffer_length, "Eroare la deschiderea fisierului de comenzi\n");
-        write_to_pipe(error_msg);
+        printf("Eroare la deschiderea fisierului de comenzi\n");
         return;
     }
     // citim comanda din fisier
@@ -214,45 +195,35 @@ void monitor_semnal(int semnal)
     } 
     else if (strcmp(cmd, "stop") == 0) 
     {
-        write_to_pipe("Monitorul se opreste...\n");
+        printf("Monitorul se opreste...\n");
+        fflush(stdout); 
         usleep(1000000);
         exit(0);
     } 
     else 
     {
-        char unknown_cmd[buffer_length];
-        snprintf(unknown_cmd, buffer_length, "Comanda necunoscuta: %s\n", cmd_copy);
-        write_to_pipe(unknown_cmd);
+        printf("Comanda necunoscuta: %s\n", cmd_copy);
     }
+    fflush(stdout);
 }
 
 int main(int argc, char *argv[]) 
 {
-    // verificam daca s-a primit file descriptor pentru pipe
-    // si il convertim in int
-    if (argc > 1) 
-    {
-        output_pipe_fd = atoi(argv[1]);
-    } 
-    else 
-    {
-        fprintf(stderr, "Eroare: Nu s-a primit file descriptor pentru pipe\n");
-        return 1;
-    }
 
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = monitor_semnal;
     sigaction(SIGUSR1, &sa, NULL);
 
-    write_to_pipe("\n----- Comenzi disponibile -----\n");
-    write_to_pipe("1) list_hunts\n");
-    write_to_pipe("2) list_treasures <hunt_id>\n");
-    write_to_pipe("3) view_treasure <hunt_id> <treasure_id>\n");
-    write_to_pipe("4) calculate_score\n");    
-    write_to_pipe("5) stop_monitor\n");
-    write_to_pipe("------------------------------------\n");
-
+    printf("\n----- Comenzi disponibile -----\n");
+    printf("1) list_hunts\n");
+    printf("2) list_treasures <hunt_id>\n");
+    printf("3) view_treasure <hunt_id> <treasure_id>\n");
+    printf("4) calculate_score\n");    
+    printf("5) stop_monitor\n");
+    printf("------------------------------------\n");
+    fflush(stdout);
+  
 
     while (1) 
     {
