@@ -36,7 +36,6 @@ void log_action(const char *hunt_id, const char *action) {
     time_t now = time(NULL);
     char log_entry[256];
     snprintf(log_entry, sizeof(log_entry), "%s - %s\n", ctime(&now), action);
-
     write(log_fd, log_entry, strlen(log_entry));
     close(log_fd);
 }
@@ -109,7 +108,6 @@ void list_treasures(const char *hunt_id) {
 
     close(fd);
 }
-
 void view_hunt(const char *hunt_id, int treasure_id) {
     char file_path[256];
     snprintf(file_path, sizeof(file_path), "%s/treasures.bin", hunt_id);
@@ -125,26 +123,23 @@ void view_hunt(const char *hunt_id, int treasure_id) {
 
     while (read(fd, &treasure, sizeof(Treasure_t)) == sizeof(Treasure_t)) {
         if (treasure.treasure_id == treasure_id) {
-            printf("ID: %d\nUsername: %s\nLatitude: %.6lf\nLongitude: %.6lf\nClue: %s\nValue: %d\n",
+            printf("ID: %d\nUsername: %s\nLatitude: %.6lf\nLongitude: %.6lf\nClue: %s\nValue: %d\n\n",
                    treasure.treasure_id, treasure.username, treasure.latitude,
                    treasure.longitude, treasure.hint, treasure.value);
             found = 1;
-            break;
         }
     }
 
     close(fd);
 
     if (!found) {
-        printf("Comoara cu ID-ul %d nu a fost gasita\n", treasure_id);
+        printf("Nicio comoara cu ID-ul %d nu a fost gasita\n", treasure_id);
     }
 
-    log_action(hunt_id, "Treasure hunt vizualizat\n");
+    log_action(hunt_id, "Vizualizare comori cu acelasi ID\n");
 }
 
-
-void remove_treasure(const char *hunt_id, int treasure_id) 
-{
+void remove_treasure(const char *hunt_id, int treasure_id) {
     char file_path[256];
     snprintf(file_path, sizeof(file_path), "%s/treasures.bin", hunt_id);
 
@@ -201,24 +196,36 @@ void remove_treasure(const char *hunt_id, int treasure_id)
     snprintf(action, sizeof(action), "Comoara cu ID-ul %d a fost ștearsă", treasure_id);
     log_action(hunt_id, action);
 }
-
 void remove_hunt(const char *hunt_id) 
 {
     char command[256];
+    log_action(hunt_id, "Treasure hunt sters\n");
     snprintf(command, sizeof(command), "rm -rf %s", hunt_id);
 
     if (system(command) == -1) {
         perror("eroare stergere treasure hunt\n");
         return;
     }
-    log_action(hunt_id, "Treasure hunt sters\n");
+   
+}
+void print_help() 
+{
+    printf("\n=== Treasure Manager - Comenzi disponibile ===\n");
+    printf(" --add <hunt_id>   \n");
+    printf(" --list <hunt_id>  \n");
+    printf(" --view <hunt_id> <id> \n");
+    printf(" --remove <hunt_id> <id>   \n");
+    printf(" --remove-hunt <hunt_id> \n");
+    printf(" --help  \n");
+    printf(" =============================================\n");
 }
 
 int main(int argc, char *argv[]) 
 {
     if (argc < 2)
     {
-        printf("eroare argumente\n");
+        printf("EROARE ARGUMENTE!\n");
+        print_help();
         return 1;
     }
 
@@ -226,7 +233,7 @@ int main(int argc, char *argv[])
     {
         if (argc < 3) 
         {
-            printf("eroare argumente\n");
+            print_help();
             return 1;
         }
         add_treasure(argv[2]);
@@ -235,7 +242,7 @@ int main(int argc, char *argv[])
     {
         if (argc < 3) 
         {
-            printf("eroare argumente\n");
+            print_help();
             return 1;
         }
         list_treasures(argv[2]);   
@@ -244,29 +251,42 @@ int main(int argc, char *argv[])
     {
         if (argc < 4) 
         {
-            printf("eroare argumente\n");
+            print_help();
             return 1;
         }
-        int treasure_id = atoi(argv[3]); //convertim id-ul in int
+        int treasure_id = atoi(argv[3]);
         view_hunt(argv[2], treasure_id);
     } 
     else if (strcmp(argv[1], "--remove") == 0) 
     {
         if (argc < 4) 
         {
-            printf("eroare argumente\n");
+            print_help();
             return 1;
         }
         int treasure_id = atoi(argv[3]);
         remove_treasure(argv[2], treasure_id);
-    } else if (strcmp(argv[1], "--remove-hunt") == 0) {
-        if (argc < 3) {
-            printf("eroare argumente\n");
+    }
+    else if (strcmp(argv[1], "--remove-hunt") == 0) 
+    {
+        if (argc < 3) 
+        {
+            print_help();
             return 1;
         }
         remove_hunt(argv[2]);
-    } else {
-        printf("eroare argumente\n");
     }
+    else if( strcmp(argv[1],"--help")==0)
+    {
+        print_help();
+    }
+    else
+    {
+        printf("\n!!!Comanda necunoscuta: %s\n!!! Verifica comenzile:\n", argv[1]);
+        print_help();
+        return 1;
+    }
+    
+
     return 0;
 }
