@@ -149,7 +149,8 @@ void calculate_all_scores()
 }
 
 // Functie pentru citirea rezultatelor din pipe-ul de la monitor
-void read_from_monitor_pipe() {
+void read_from_monitor_pipe() 
+{ //stergem continutul pipe_buffer (unde copiem ce scrie in pipe) ca sa fim siguri ca nu raman caractere nedorite
     memset(pipe_buffer, 0, sizeof(pipe_buffer));
     int bytes_read = read(pipe_fd[0], pipe_buffer, sizeof(pipe_buffer)-1);
     // Verificam am citit ceva din pipe
