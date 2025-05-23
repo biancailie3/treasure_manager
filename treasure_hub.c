@@ -213,7 +213,7 @@ int main()
             {
                 // Proces parinte -hub
                 close(pipe_fd[1]); //inchidem capatul de scriere in hub
-                monitor_pid = pid;
+                monitor_pid = pid; //retinem pid ul monitorului (pid>0 ->suntem in procesul parinte si pid= pid ul copilului)
                 printf("Monitor pornit.\n");
                 usleep(1000000); // asteptam putin pentru a ne asigura ca monitorul este pornit
                 read_from_monitor_pipe();
