@@ -108,7 +108,7 @@ void list_treasures(const char *hunt_id) {
 
     close(fd);
 }
-void view_hunt(const char *hunt_id, int treasure_id) {
+void view_treasure(const char *hunt_id, int treasure_id) {
     char file_path[256];
     snprintf(file_path, sizeof(file_path), "%s/treasures.bin", hunt_id);
 
